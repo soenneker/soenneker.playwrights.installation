@@ -73,7 +73,7 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
 
     private static string[] BuildInstallArgs(PlaywrightInstallationOptions options)
     {
-        var args = new List<string> { "install" };
+        var args = new List<string>(4) { "install" };
 
         if (options.WithDeps)
             args.Add("--with-deps");
