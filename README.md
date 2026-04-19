@@ -7,6 +7,13 @@
 
 Makes sure Playwright’s browser (e.g. Chromium) is installed before you use it. It runs the install once, sets the browser path, and you’re done.
 
+## Related Repos
+
+You might also be interested in:
+
+- [soenneker.playwrights.crawler](https://github.com/soenneker/soenneker.playwrights.crawler) for crawling and mirroring sites to disk with Playwright.
+- [soenneker.playwrights.extensions.stealth](https://github.com/soenneker/soenneker.playwrights.extensions.stealth) for stealth-oriented Playwright launch and context extensions.
+
 ---
 
 ## Quick start
