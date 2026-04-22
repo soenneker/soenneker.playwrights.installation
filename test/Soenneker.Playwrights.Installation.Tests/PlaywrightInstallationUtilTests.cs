@@ -1,20 +1,19 @@
 using Soenneker.Playwrights.Installation.Abstract;
-using Soenneker.Tests.FixturedUnit;
-using Xunit;
+using Soenneker.Tests.HostedUnit;
 
 namespace Soenneker.Playwrights.Installation.Tests;
 
-[Collection("Collection")]
-public sealed class PlaywrightInstallationUtilTests : FixturedUnitTest
+[ClassDataSource<Host>(Shared = SharedType.PerTestSession)]
+public sealed class PlaywrightInstallationUtilTests : HostedUnitTest
 {
     private readonly IPlaywrightInstallationUtil _util;
 
-    public PlaywrightInstallationUtilTests(Fixture fixture, ITestOutputHelper output) : base(fixture, output)
+    public PlaywrightInstallationUtilTests(Host host) : base(host)
     {
         _util = Resolve<IPlaywrightInstallationUtil>(true);
     }
 
-    [Fact]
+    [Test]
     public void Default()
     {
 
