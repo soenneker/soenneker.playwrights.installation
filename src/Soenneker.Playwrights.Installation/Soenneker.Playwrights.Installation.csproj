@@ -49,6 +49,6 @@
         <PackageReference Include="Soenneker.Enums.DeployEnvironment" Version="4.0.226" />
         <PackageReference Include="Soenneker.Extensions.Configuration" Version="4.0.845" />
         <PackageReference Include="Soenneker.Utils.Directory" Version="4.0.885" />
-        <PackageReference Include="Soenneker.Utils.Runtime" Version="4.0.1045" />
+        <PackageReference Include="Soenneker.Utils.Runtime" Version="4.0.1046" />
     </ItemGroup>
 </Project>
