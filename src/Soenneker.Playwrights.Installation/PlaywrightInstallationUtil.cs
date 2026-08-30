@@ -15,12 +15,13 @@ using Soenneker.Playwrights.Installation.Options;
 
 namespace Soenneker.Playwrights.Installation;
 
-/// <inheritdoc cref="IPlaywrightInstallationUtil"/>
 public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
 {
     private readonly ILogger<PlaywrightInstallationUtil> _logger;
     private readonly AsyncInitializer _installer;
+    private readonly object _optionsLock = new();
     private PlaywrightInstallationOptions? _options;
+    private bool _installationStarted;
 
     public PlaywrightInstallationUtil(ILogger<PlaywrightInstallationUtil> logger, IDirectoryUtil directoryUtil, IConfiguration configuration)
     {
@@ -28,7 +29,12 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
 
         _installer = new AsyncInitializer(async cancellationToken =>
         {
-            PlaywrightInstallationOptions options = _options ?? GetOptions(configuration);
+            PlaywrightInstallationOptions options;
+
+            lock (_optionsLock)
+            {
+                options = _options ?? GetOptions(configuration);
+            }
 
             logger.LogDebug("Ensuring Playwright {Browser} is installed...", options.Browser);
 
@@ -61,7 +67,13 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
 
     public void SetOptions(PlaywrightInstallationOptions options)
     {
-        _options = options;
+        lock (_optionsLock)
+        {
+            if (_installationStarted)
+                throw new InvalidOperationException("Playwright installation options cannot be changed after installation has started.");
+
+            _options = options;
+        }
     }
 
     private static PlaywrightInstallationOptions GetOptions(IConfiguration configuration)
@@ -106,21 +118,19 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
 
     public ValueTask EnsureInstalled(CancellationToken cancellationToken = default)
     {
+        lock (_optionsLock)
+        {
+            _installationStarted = true;
+        }
+
         return _installer.Init(cancellationToken);
     }
 
-    /// <summary>
-    /// Releases resources used by the current instance.
-    /// </summary>
     public void Dispose()
     {
         _installer.Dispose();
     }
 
-    /// <summary>
-    /// Asynchronously releases resources used by the current instance.
-    /// </summary>
-    /// <returns>A task that represents the asynchronous operation.</returns>
     public ValueTask DisposeAsync()
     {
         return _installer.DisposeAsync();

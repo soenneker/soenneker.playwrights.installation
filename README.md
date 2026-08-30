@@ -5,7 +5,7 @@
 
 # Soenneker.Playwrights.Installation
 
-Makes sure Playwright’s browser (e.g. Chromium) is installed before you use it. It runs the install once, sets the browser path, and you’re done.
+Installs a Playwright browser once per application process and configures `PLAYWRIGHT_BROWSERS_PATH` before Playwright starts.
 
 ## Related Repos
 
@@ -32,17 +32,18 @@ using Soenneker.Playwrights.Installation.Registrars;
 services.AddPlaywrightInstallationUtilAsSingleton();
 ```
 
-**3. Before using Playwright, ensure it’s installed**
+**3. Before creating Playwright, ensure the browser is installed**
 
 ```csharp
 using Soenneker.Playwrights.Installation.Abstract;
 
 var playwrightUtil = serviceProvider.GetRequiredService<IPlaywrightInstallationUtil>();
 await playwrightUtil.EnsureInstalled();
-// Now use Playwright as usual.
+
+using IPlaywright playwright = await Playwright.CreateAsync();
 ```
 
-The first call to `EnsureInstalled()` installs the browser if needed. Later calls do nothing. You only need to call it once per process.
+The first call to `EnsureInstalled()` runs Playwright's installer. Concurrent and later calls share that initialization. Register the utility as a singleton when the application uses one process-wide browser directory.
 
 ---
 
@@ -64,6 +65,8 @@ playwrightUtil.SetOptions(new PlaywrightInstallationOptions
 
 await playwrightUtil.EnsureInstalled();
 ```
+
+Options are frozen when `EnsureInstalled()` begins; changing them afterward throws `InvalidOperationException`.
 
 - **NoShell** — Passes `--no-shell` to the install command.
 - **WithDeps** — Passes `--with-deps` (install system dependencies).

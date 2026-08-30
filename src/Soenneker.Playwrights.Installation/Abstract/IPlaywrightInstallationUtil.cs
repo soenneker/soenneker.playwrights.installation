@@ -7,26 +7,27 @@ using Soenneker.Playwrights.Installation.Options;
 namespace Soenneker.Playwrights.Installation.Abstract;
 
 /// <summary>
-/// A utility library for Playwright installation assurance
+/// Ensures that a configured Playwright browser is available before browser automation starts.
 /// </summary>
 public interface IPlaywrightInstallationUtil : IDisposable, IAsyncDisposable
 {
     /// <summary>
-    /// Gets playwright path.
+    /// Gets the default directory used for Playwright browser binaries.
     /// </summary>
-    /// <returns>The requested text.</returns>
+    /// <returns>The default browser installation directory for the current host.</returns>
     string GetPlaywrightPath();
 
     /// <summary>
-    /// Sets options for installation. Call before <see cref="EnsureInstalled"/>; has no effect after the first install.
+    /// Sets options for installation. This must be called before <see cref="EnsureInstalled"/> begins.
     /// </summary>
-    /// <param name="options">Options to configure for the Playwright Installation.</param>
+    /// <param name="options">Browser, dependency, shell, and installation-path options.</param>
+    /// <exception cref="InvalidOperationException">Installation has already started.</exception>
     void SetOptions(PlaywrightInstallationOptions options);
 
     /// <summary>
-    /// Ensures installed for the Playwright Installation.
+    /// Installs the configured browser and its optional system dependencies once per utility instance.
     /// </summary>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>A task that completes when the ensure installed operation is complete.</returns>
+    /// <returns>A task that completes when the browser is ready to use.</returns>
     ValueTask EnsureInstalled(CancellationToken cancellationToken = default);
 }

@@ -6,7 +6,7 @@ using Soenneker.Utils.Directory.Registrars;
 namespace Soenneker.Playwrights.Installation.Registrars;
 
 /// <summary>
-/// A utility library for Playwright installation assurance
+/// Registers the Playwright installation utility and its dependencies.
 /// </summary>
 public static class PlaywrightInstallationUtilRegistrar
 {
