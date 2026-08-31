@@ -47,7 +47,7 @@
         <PackageReference Include="Microsoft.Playwright" Version="1.62.0" />
         <PackageReference Include="Soenneker.Asyncs.Initializers" Version="4.0.87" />
         <PackageReference Include="Soenneker.Enums.DeployEnvironment" Version="4.0.236" />
-        <PackageReference Include="Soenneker.Extensions.Configuration" Version="4.0.861" />
+        <PackageReference Include="Soenneker.Extensions.Configuration" Version="4.0.870" />
         <PackageReference Include="Soenneker.Utils.Directory" Version="4.0.902" />
         <PackageReference Include="Soenneker.Utils.Runtime" Version="4.0.1067" />
     </ItemGroup>
