@@ -10,6 +10,7 @@ using Microsoft.Playwright;
 using Soenneker.Utils.Directory.Abstract;
 using Microsoft.Extensions.Configuration;
 using Soenneker.Asyncs.Initializers;
+using Soenneker.Asyncs.Locks;
 using Soenneker.Extensions.ValueTask;
 using Soenneker.Playwrights.Installation.Options;
 
@@ -19,8 +20,9 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
 {
     private readonly ILogger<PlaywrightInstallationUtil> _logger;
     private readonly AsyncInitializer _installer;
-    private readonly object _optionsLock = new();
+    private readonly AsyncLock _optionsLock = new();
     private PlaywrightInstallationOptions? _options;
+    private bool? _requiresHeadlessShell;
     private bool _installationStarted;
 
     public PlaywrightInstallationUtil(ILogger<PlaywrightInstallationUtil> logger, IDirectoryUtil directoryUtil, IConfiguration configuration)
@@ -30,10 +32,12 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
         _installer = new AsyncInitializer(async cancellationToken =>
         {
             PlaywrightInstallationOptions options;
+            bool? requiresHeadlessShell;
 
-            lock (_optionsLock)
+            using (await _optionsLock.Lock(cancellationToken).NoSync())
             {
                 options = _options ?? GetOptions(configuration);
+                requiresHeadlessShell = _requiresHeadlessShell;
             }
 
             logger.LogDebug("Ensuring Playwright {Browser} is installed...", options.Browser);
@@ -48,7 +52,7 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
 
             try
             {
-                string[] args = BuildInstallArgs(options);
+                string[] args = BuildInstallArgs(options, requiresHeadlessShell);
 
                 int code = Program.Main(args);
 
@@ -67,7 +71,7 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
 
     public void SetOptions(PlaywrightInstallationOptions options)
     {
-        lock (_optionsLock)
+        using (_optionsLock.LockSync())
         {
             if (_installationStarted)
                 throw new InvalidOperationException("Playwright installation options cannot be changed after installation has started.");
@@ -83,14 +87,16 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
         return options;
     }
 
-    private static string[] BuildInstallArgs(PlaywrightInstallationOptions options)
+    private static string[] BuildInstallArgs(PlaywrightInstallationOptions options, bool? requiresHeadlessShell)
     {
         var args = new List<string>(4) { "install" };
 
         if (options.WithDeps)
             args.Add("--with-deps");
 
-        if (options.NoShell)
+        bool canSkipHeadlessShell = !options.Browser.Equals("chromium", StringComparison.OrdinalIgnoreCase) || requiresHeadlessShell is not true;
+
+        if (options.NoShell && canSkipHeadlessShell)
             args.Add("--no-shell");
 
         args.Add(options.Browser);
@@ -116,23 +122,43 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
         return Path.Combine(AppContext.BaseDirectory, playwrightFolder);
     }
 
-    public ValueTask EnsureInstalled(CancellationToken cancellationToken = default)
+    public async ValueTask EnsureInstalled(CancellationToken cancellationToken = default)
     {
-        lock (_optionsLock)
+        using (await _optionsLock.Lock(cancellationToken).NoSync())
         {
             _installationStarted = true;
         }
 
-        return _installer.Init(cancellationToken);
+        await _installer.Init(cancellationToken).NoSync();
+    }
+
+    public async ValueTask EnsureInstalled(BrowserTypeLaunchOptions launchOptions, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(launchOptions);
+
+        bool requiresHeadlessShell = launchOptions.Headless is not false && string.IsNullOrWhiteSpace(launchOptions.Channel);
+
+        using (await _optionsLock.Lock(cancellationToken).NoSync())
+        {
+            if (_installationStarted && _requiresHeadlessShell != requiresHeadlessShell)
+                throw new InvalidOperationException("Playwright installation has already started without compatible browser launch options.");
+
+            _requiresHeadlessShell = requiresHeadlessShell;
+            _installationStarted = true;
+        }
+
+        await _installer.Init(cancellationToken).NoSync();
     }
 
     public void Dispose()
     {
         _installer.Dispose();
+        _optionsLock.Dispose();
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        return _installer.DisposeAsync();
+        await _installer.DisposeAsync().NoSync();
+        await _optionsLock.DisposeAsync().NoSync();
     }
 }

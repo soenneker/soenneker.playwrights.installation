@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Playwright;
 
 using Soenneker.Playwrights.Installation.Options;
 
@@ -18,7 +19,7 @@ public interface IPlaywrightInstallationUtil : IDisposable, IAsyncDisposable
     string GetPlaywrightPath();
 
     /// <summary>
-    /// Sets options for installation. This must be called before <see cref="EnsureInstalled"/> begins.
+    /// Sets options for installation. This must be called before <see cref="EnsureInstalled(CancellationToken)"/> begins.
     /// </summary>
     /// <param name="options">Browser, dependency, shell, and installation-path options.</param>
     /// <exception cref="InvalidOperationException">Installation has already started.</exception>
@@ -30,4 +31,13 @@ public interface IPlaywrightInstallationUtil : IDisposable, IAsyncDisposable
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task that completes when the browser is ready to use.</returns>
     ValueTask EnsureInstalled(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Installs the configured browser and any artifacts required by the supplied launch options once per utility instance.
+    /// </summary>
+    /// <param name="launchOptions">The options that will be passed to Playwright when launching the browser.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>A task that completes when the browser is ready to use.</returns>
+    /// <exception cref="InvalidOperationException">Installation has already started without compatible launch options.</exception>
+    ValueTask EnsureInstalled(BrowserTypeLaunchOptions launchOptions, CancellationToken cancellationToken = default);
 }

@@ -43,6 +43,20 @@ await playwrightUtil.EnsureInstalled();
 using IPlaywright playwright = await Playwright.CreateAsync();
 ```
 
+When supplying launch options, pass the same instance to the installer and Playwright. This ensures the required Chromium artifact is installed—for example, default headless mode requires Chromium's separate headless shell:
+
+```csharp
+var launchOptions = new BrowserTypeLaunchOptions
+{
+    Headless = true
+};
+
+await playwrightUtil.EnsureInstalled(launchOptions);
+
+using IPlaywright playwright = await Playwright.CreateAsync();
+await using IBrowser browser = await playwright.Chromium.LaunchAsync(launchOptions);
+```
+
 The first call to `EnsureInstalled()` runs Playwright's installer. Concurrent and later calls share that initialization. Register the utility as a singleton when the application uses one process-wide browser directory.
 
 ---
