@@ -16,6 +16,7 @@ using Soenneker.Playwrights.Installation.Options;
 
 namespace Soenneker.Playwrights.Installation;
 
+/// <inheritdoc cref="IPlaywrightInstallationUtil" />
 public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
 {
     private readonly ILogger<PlaywrightInstallationUtil> _logger;
