@@ -46,9 +46,16 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Playwright" Version="1.62.0" />
         <PackageReference Include="Soenneker.Asyncs.Initializers" Version="4.0.102" />
-        <PackageReference Include="Soenneker.Enums.DeployEnvironment" Version="4.0.242" />
-        <PackageReference Include="Soenneker.Extensions.Configuration" Version="4.0.895" />
         <PackageReference Include="Soenneker.Utils.Directory" Version="4.0.944" />
         <PackageReference Include="Soenneker.Utils.Runtime" Version="4.0.1114" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Soenneker.Extensions.ValueTask" Version="4.0.123" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     </ItemGroup>
 </Project>
