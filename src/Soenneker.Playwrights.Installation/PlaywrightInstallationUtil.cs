@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using Soenneker.Playwrights.Installation.Abstract;
 using System.Threading;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Soenneker.Asyncs.Initializers;
 using Soenneker.Asyncs.Locks;
 using Soenneker.Extensions.ValueTask;
+using Soenneker.Extensions.Task;
 using Soenneker.Playwrights.Installation.Options;
 
 namespace Soenneker.Playwrights.Installation;
@@ -55,10 +57,25 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
             {
                 string[] args = BuildInstallArgs(options, requiresHeadlessShell);
 
-                int code = Program.Main(args);
-
-                if (code != 0)
-                    throw new Exception($"Playwright CLI exited with {code}");
+                var cli = new Program();
+                var result = cli.RunWithResult(args);
+                // Node must start before Playwright can handle --with-deps.
+                if (options.WithDeps && OperatingSystem.IsLinux() && result.ExitCode == 127 &&
+                    result.StandardError?.Contains("libatomic.so.1: cannot open shared object file", StringComparison.Ordinal) == true &&
+                    File.Exists("/usr/bin/apt-get"))
+                {
+                    logger.LogInformation("Installing libatomic1 for the Playwright driver. Loader diagnostic: {Diagnostic}", OutputTail(result.StandardError));
+                    await RunApt(["update"], cancellationToken).NoSync();
+                    await RunApt(["install", "-y", "--no-install-recommends", "libatomic1"], cancellationToken).NoSync();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    result = cli.RunWithResult(args);
+                }
+                if (result.ExitCode != 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Playwright {string.Join(" ", args)} exited with code {result.ExitCode}. " +
+                        $"stderr: {OutputTail(result.StandardError)}\nstdout: {OutputTail(result.StandardOutput)}");
+                }
 
                 logger.LogInformation("Playwright {Browser} installation confirmed.", options.Browser);
             }
@@ -68,6 +85,53 @@ public sealed class PlaywrightInstallationUtil : IPlaywrightInstallationUtil
                 throw;
             }
         });
+    }
+
+    private static string OutputTail(string? output)
+    {
+        const int limit = 4096;
+        string text = output?.Trim() ?? string.Empty;
+        return text.Length > limit ? text[^limit..] : text;
+    }
+
+    private static async Task RunApt(string[] arguments, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var start = new ProcessStartInfo("/usr/bin/apt-get")
+        {
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false
+        };
+        if (Environment.UserName != "root" && File.Exists("/usr/bin/sudo"))
+        {
+            start.FileName = "/usr/bin/sudo";
+            start.ArgumentList.Add("-n");
+            start.ArgumentList.Add("/usr/bin/apt-get");
+        }
+
+        start.Environment["DEBIAN_FRONTEND"] = "noninteractive";
+        foreach (string argument in arguments)
+            start.ArgumentList.Add(argument);
+
+        using Process process = Process.Start(start) ?? throw new InvalidOperationException("Could not start apt-get to install the Playwright driver dependency libatomic1.");
+        Task<string> stdout = process.StandardOutput.ReadToEndAsync();
+        Task<string> stderr = process.StandardError.ReadToEndAsync();
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken).NoSync();
+        }
+        catch (OperationCanceledException)
+        {
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
+            throw;
+        }
+
+        string error = await stderr.NoSync();
+        string output = await stdout.NoSync();
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException($"Playwright driver requires libatomic.so.1. apt-get {string.Join(" ", arguments)} exited with code {process.ExitCode}. stderr: {OutputTail(error)}\nstdout: {OutputTail(output)}");
     }
 
     public void SetOptions(PlaywrightInstallationOptions options)
